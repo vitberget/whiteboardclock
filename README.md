@@ -1,2 +1,2 @@
-# whiteboardclock
-Whiteboard clock, moving to arms to direct a whiteboard marker.
+# Whiteboardclock
+A robot with two moving arms that directs a whiteboard marker around.
