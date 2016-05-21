@@ -3,12 +3,13 @@
 
 Servo sLeft;
 Servo sRight;
+Servo upDown;
 
-const double lServoX = -2;
-const double rServoX = 2;
+const double lServoX = -2.5;
+const double rServoX = 2.5;
 
-const double arm1 = 5;
-const double arm2 = 5;
+const double arm1 = 12;
+const double arm2 = 7;
 const double botharms = arm1+arm2;
 const double botharms_sq = botharms * botharms;
 
@@ -19,9 +20,16 @@ void debug(String message) {
 void setup() {
     sLeft.attach(D0);
     sRight.attach(D1);
-    
-    gotoXY(0,6);
-    Particle.function("xy",gotoStrXY);    
+    upDown.attach(D2);
+
+    penUp();
+    delay(25);
+    sLeft.write(90);
+    sRight.write(90);
+    Particle.function("xy",gotoStrXY);
+    Particle.function("pu",penUpStr); 
+    Particle.function("pd",penDownStr); 
+    Particle.function("text",drawText);
 }
 
 int gotoStrXY(String command) {
@@ -34,7 +42,25 @@ int gotoStrXY(String command) {
     return gotoXY(x,y);
 }
 
+int penUpStr(String ignore) {
+    penUp();
+    return 0;
+}
 
+
+int penDownStr(String ignore) {
+    penDown();
+    return 0;
+}
+
+void penUp() {
+    // upDown.write(0);
+}
+
+
+void penDown() {
+    // upDown.write(0);
+}
 
 double r2d(double r) {
 	return r * 180 / PI;
@@ -111,7 +137,63 @@ int gotoXY(const double x, const double y) {
     return 0;
 }
 
-void loop()
-{
+void loop(){}
 
+const String font[] = {
+    "CHAR 1 1",
+    "PU",
+    "XY 0:0.5",
+    "PD",
+    "XY 0.5:0",
+    "XY 0.5:0.5",
+    "XY 0.5:1",
+    "XY 0.5:1.5",
+    "XY 0.5:2",
+    "PU",
+    "XY 0:2",
+    "PD",
+    "XY 0.5:2",
+    "XY 1:2",
+    "PU",
+    
+    
+};
+
+
+int drawText(String text) {
+    double dx = -8;
+    for(int i=0; i<text.length(); i++) {
+        dx += drawCharacter(text.charAt(i), dx, 7);   
+    }
+    return 0;
+}
+
+double drawCharacter(const char c, const double dx, const double dy) {
+    bool drawing = false;
+    double width = 0;
+    
+    for(int i=0;;i++) {
+        String cmdLine = font[i];
+        if(cmdLine.startsWith("CHAR ")) {
+            if(drawing) 
+                return width;
+            if(cmdLine.charAt(5)==c) {
+                drawing = true;
+                width = atof(cmdLine.substring(7));
+            }
+        }
+        else if(cmdLine.startsWith("PU")) {
+            if(drawing) penUp();
+        }
+        else if(cmdLine.startsWith("PD")) {
+            if(drawing) penDown();
+        }
+        else if(cmdLine.startsWith("XY ")) {
+            if(drawing) gotoStrXY(cmdLine.substring(3));
+        }
+        else {
+            return width; 
+        }
+    }
+	return width;
 }
