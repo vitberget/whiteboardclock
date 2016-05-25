@@ -1,145 +1,98 @@
 #include <cmath>
 #define PI 3.14159265
 
-Servo sLeft;
-Servo sRight;
-Servo upDown;
+Servo servo_left;
+Servo servo_right;
+Servo servo_lift;
 
-const double lServoX = -2.5;
-const double rServoX = 2.5;
-
-const double arm1 = 12;
-const double arm2 = 7;
-const double botharms = arm1+arm2;
-const double botharms_sq = botharms * botharms;
-
-void debug(String message) {
-    Spark.publish("DEBUG", message);
-}
+const float left_servo_x            = -4;
+const float right_servo_x           = 4;
+const float inner_arm               = 13;
+const float outer_arm               = 22;
+const float inner_arm_sq            = inner_arm * inner_arm;
+const float outer_arm_sq            = outer_arm * outer_arm;
+const float cosine_rule_helper_sq   = inner_arm_sq - outer_arm_sq;
+const float botharms_sq             = (inner_arm + outer_arm) * (inner_arm + outer_arm);
 
 void setup() {
-    sLeft.attach(D0);
-    sRight.attach(D1);
-    upDown.attach(D2);
+    servo_left.attach(D0);
+    servo_right.attach(D1);
+    servo_lift.attach(D2);
 
     penUp();
     delay(25);
-    sLeft.write(90);
-    sRight.write(90);
+    servo_left.write(90);
+    servo_right.write(90);
+    
     Particle.function("xy",gotoStrXY);
     Particle.function("pu",penUpStr); 
     Particle.function("pd",penDownStr); 
     Particle.function("text",drawText);
 }
 
+void loop(){}
+
 int gotoStrXY(String command) {
     int index = command.indexOf(":");
     if(index<0) return -200;
     
-    float x = atof(command.substring(0,index));
-    float y = atof(command.substring(index+1));
+    float pen_x = atof(command.substring(0,index));
+    float pen_y = atof(command.substring(index+1));
     
-    return gotoXY(x,y);
+    return gotoXY(pen_x,pen_y);
 }
 
-int penUpStr(String ignore) {
-    penUp();
-    return 0;
-}
+int penUpStr(String ignore)   { penUp();   return 0; }
+int penDownStr(String ignore) { penDown(); return 0; }
+void penUp()   { servo_lift.write(12); }
+void penDown() { servo_lift.write(120);}
+float radian2degrees(float r) {	return r * 180.0f / PI; }
 
-
-int penDownStr(String ignore) {
-    penDown();
-    return 0;
-}
-
-void penUp() {
-    // upDown.write(0);
-}
-
-
-void penDown() {
-    // upDown.write(0);
-}
-
-double r2d(double r) {
-	return r * 180 / PI;
-}
-
-// x is zero in the middle of the servos, positive to the right
-// y is zero at the line of two servos, positive below
+// origin x is zero in the middle of the servos, positive to the right
+// origin y is zero at the line of two servos, positive below
 // Desired point to move the pen to referred to 'the point'
-int gotoXY(const double x, const double y) {
-    
-    if(y<5) {
-		debug("Above y threashold, risc of flipping the wrong way");
-		return -1;
-	}
+int gotoXY(const float pen_x, const float pen_y) {
+    if(pen_y<5) return -1;
     
     // Calculate the point relative to each servo
-    const double d_lx = x - lServoX;
-    const double d_lx_sq = d_lx * d_lx;
-    const double d_rx = x - rServoX;
-    const double d_rx_sq = d_rx * d_rx;
-    const double y_sq = y * y;
+    const float delta_left_x  = pen_x - left_servo_x;
+	const float delta_right_x = pen_x - right_servo_x;
+    const float pen_y_sq = pen_y * pen_y;
     
+    // Distances servos to pen, squared
+	const float pen_distance_left_sq  = delta_left_x  * delta_left_x  + pen_y_sq;
+	const float pen_distance_right_sq = delta_right_x * delta_right_x + pen_y_sq;
     
     // See if the point is impossible far away (longer than both arms)
-    if( d_lx_sq + y_sq >= botharms_sq) {
-        debug("Out of reach, left arm");
-        return -10;
-    }
-    if( d_rx_sq + y_sq >= botharms_sq) {
-        debug("Out of reach, right arm");
-        return -11;
-    }
+    if( pen_distance_left_sq  >= botharms_sq) return -10;
+    if( pen_distance_right_sq >= botharms_sq) return -11;
 
     // Angles from each servo to the point
-    const double v1_l = atan2(d_lx, y);
-    const double v1_r = atan2(d_rx, y);
+    const float pen_angle_left  = atan2(delta_left_x,  pen_y);
+    const float pen_angle_right = atan2(delta_right_x, pen_y);
 
-    // Calculate the imaginary point in the "middle" of the vector from each servo to the point
-    const double mp_lx = (d_lx * arm1) /  botharms;
-    const double mp_rx = (d_rx * arm1) /  botharms;
-    const double mp_y = (y * arm1) / botharms;
-	const double mp_y_sq = mp_y * mp_y;
-    
-    // Lenght to the imaginary "middle" point
-    const double mp_len_l = sqrt(mp_lx*mp_lx + mp_y_sq);
-    const double mp_len_r = sqrt(mp_rx*mp_rx + mp_y_sq);
-    
-    // We know the length of the arm, distance to the middle point and that one angle is 90 degrees, mathy
-    const double v2_l = acos(mp_len_l/arm1);
-    const double v2_r = acos(mp_len_r/arm1);
+	// Cosine rule for the win (we know all three lenght of the "triangle")
+	const float bend_angle_left  = acos( (cosine_rule_helper_sq + pen_distance_left_sq )  / (2*inner_arm*sqrt(pen_distance_left_sq)));
+	const float bend_angle_right = acos( (cosine_rule_helper_sq + pen_distance_right_sq ) / (2*inner_arm*sqrt(pen_distance_right_sq)));
 
-    // Sum the two angles together
-    const double v_lr = v2_l - v1_l;
-	const double v_rr = -v2_r - v1_r;
-	
-	// Convert radian to degrees
-	const double v_l_1 = r2d(v_lr);
-	const double v_r_1 = r2d(v_rr);
-	
-	// Offset 90 degrees
-	const double v_l = 90 + v_l_1;
-	const double v_r = 90 + v_r_1;
+	// Sum the two angles together (but they are "opposite") and convert radian to degrees, with 90 degrees offset
+	const float servo_angle_left  = 90.0f + radian2degrees( bend_angle_left  - pen_angle_left);
+	const float servo_angle_right = 90.0f + radian2degrees(-bend_angle_right - pen_angle_right);
     
     // Sanity check of angles
-    if(v_l<0) return -21; // Left angle to low
-    if(v_r<0) return -22; // Right angle to low
-    if(v_l>180) return -23; // Left angle to high
-    if(v_r>180) return -24; // Right angle to high
+    if(servo_angle_left <0) return -21; // Left angle to low
+    if(servo_angle_right<0) return -22; // Right angle to low
+    if(servo_angle_left >180) return -23; // Left angle to high
+    if(servo_angle_right>180) return -24; // Right angle to high
     
     // Finally - move the servos
-    sLeft.write(v_l);
-    sRight.write(v_r);
-    
+    servo_left.write(servo_angle_left);
+    servo_right.write(servo_angle_right);
     return 0;
 }
 
-void loop(){}
-
 const String font[] = {
+// 1    
     "CHAR 1 1",
     "PU",
     "XY 0:0.5",
@@ -155,22 +108,19 @@ const String font[] = {
     "XY 0.5:2",
     "XY 1:2",
     "PU",
-    
-    
 };
 
-
 int drawText(String text) {
-    double dx = -8;
+    float dx = -8.0f;
     for(int i=0; i<text.length(); i++) {
-        dx += drawCharacter(text.charAt(i), dx, 7);   
+        dx += drawCharacter(text.charAt(i), dx, 7.0f);   
     }
     return 0;
 }
 
-double drawCharacter(const char c, const double dx, const double dy) {
+float drawCharacter(const char c, const float dx, const float dy) {
     bool drawing = false;
-    double width = 0;
+    float width = 0.0f;
     
     for(int i=0;;i++) {
         String cmdLine = font[i];
