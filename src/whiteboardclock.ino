@@ -1,6 +1,31 @@
 #include <cmath>
-#include "font.h"
+#include <string.h>
+#include <stdlib.h>
 const float PI = 3.14159265f;
+
+const char* font[] = {
+// 1    
+    "CHAR 1 1",
+    "PU",
+    "XY 0:0.5",
+    "PD",
+    "XY 0.5:0",
+    "XY 0.5:0.5",
+    "XY 0.5:1",
+    "XY 0.5:1.5",
+    "XY 0.5:2",
+    "PU",
+    "XY 0:2",
+    "PD",
+    "XY 0.5:2",
+    "XY 1:2",
+    "PU",
+    
+    
+    
+    "END",
+    NULL
+};
 
 Servo servo_left;
 Servo servo_right;
@@ -120,25 +145,21 @@ float drawCharacter(const char character, const float dx, const float dy) {
     bool drawing = false;
     float width  = 0.0f;
     
-    for(int i=0;;i++) {
-        String cmdLine = font[i];
-        if(cmdLine.startsWith("CHAR ")) {
+    for(int i=0;i<30;i++) {
+        const char* cmdLine = font[i];
+        if(strncmp("CHAR ",cmdLine,5) == 0) {
             if(drawing) break;
-            if(cmdLine.charAt(5)==character) {
+            if(cmdLine[5]==character) {
                 drawing = true;
-                width = atof(cmdLine.substring(7));
+                width = atof(&cmdLine[7]);
             }
         }
-        else if(cmdLine.startsWith("XY ")) {
-            if(drawing) {
-                const int result = gotoStrXY_with_delta(cmdLine.substring(3), dx, dy);
-                if(result!=0) Particle.publish("DEBUG","Outta reach");
-            }
-        }
-        else if(cmdLine.startsWith("PU")) { if(drawing) penUp(NULL); }
-        else if(cmdLine.startsWith("PD")) { if(drawing) penDown(NULL); }
-        else if(cmdLine.startsWith("END")) break;
+        else if(strncmp("XY ",cmdLine,3) == 0) { if(drawing) gotoStrXY_with_delta(String(&cmdLine[3]), dx, dy); }
+        else if(strncmp("PU",cmdLine,2) == 0)  { if(drawing) penUp(NULL); }
+        else if(strncmp("PD",cmdLine,2) == 0)  { if(drawing) penDown(NULL); }
+        else if(cmdLine==NULL || strncmp("END",cmdLine,3) == 0) break;
         else break; // Unknown command
+        }
     }
 	return width;
 }
