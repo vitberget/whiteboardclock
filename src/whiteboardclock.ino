@@ -144,11 +144,11 @@ int drawText(String text) {
 float drawCharacter(const char character, const float dx, const float dy) {
     bool drawing = false;
     float width  = 0.0f;
-    
+
     for(int i=0;i<30;i++) {
         const char* cmdLine = font[i];
         if(strncmp("CHAR ",cmdLine,5) == 0) {
-            if(drawing) break;
+            if(drawing) { break; }
             if(cmdLine[5]==character) {
                 drawing = true;
                 width = atof(&cmdLine[7]);
@@ -157,9 +157,8 @@ float drawCharacter(const char character, const float dx, const float dy) {
         else if(strncmp("XY ",cmdLine,3) == 0) { if(drawing) gotoStrXY_with_delta(String(&cmdLine[3]), dx, dy); }
         else if(strncmp("PU",cmdLine,2) == 0)  { if(drawing) penUp(NULL); }
         else if(strncmp("PD",cmdLine,2) == 0)  { if(drawing) penDown(NULL); }
-        else if(cmdLine==NULL || strncmp("END",cmdLine,3) == 0) break;
-        else break; // Unknown command
-        }
+        else if(cmdLine==NULL || strncmp("END",cmdLine,3) == 0) { break; } 
+        else { break; } // Unknown command
     }
 	return width;
 }
