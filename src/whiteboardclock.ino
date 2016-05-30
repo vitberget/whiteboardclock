@@ -1,52 +1,62 @@
 #include <cmath>
-#define PI 3.14159265
+#include "font.h"
+const float PI = 3.14159265f;
 
 Servo servo_left;
 Servo servo_right;
 Servo servo_lift;
 
-const float left_servo_x            = -4;
-const float right_servo_x           = 4;
-const float inner_arm               = 13;
-const float outer_arm               = 22;
+const float left_servo_x            = -4.0f;
+const float right_servo_x           = 4.0f;
+const float left_angle_offset       = 0.0f;
+const float right_angle_offset      = 0.0f;
+const float inner_arm               = 13.0f;
+const float outer_arm               = 22.0f;
 const float inner_arm_sq            = inner_arm * inner_arm;
 const float outer_arm_sq            = outer_arm * outer_arm;
 const float cosine_rule_helper_sq   = inner_arm_sq - outer_arm_sq;
 const float botharms_sq             = (inner_arm + outer_arm) * (inner_arm + outer_arm);
 
 void setup() {
-    servo_left.attach(D0);
-    servo_right.attach(D1);
-    servo_lift.attach(D2);
+    servo_left.attach(  D0 );
+    servo_right.attach( D1 );
+    servo_lift.attach(  D2 );
 
-    penUp();
-    delay(25);
-    servo_left.write(90);
-    servo_right.write(90);
-    
-    Particle.function("xy",gotoStrXY);
-    Particle.function("pu",penUpStr); 
-    Particle.function("pd",penDownStr); 
-    Particle.function("text",drawText);
+    penUp(NULL);
+    delay(5);
+    setAngles(90,90);
+
+    Particle.function("xy", gotoStrXY);
+    Particle.function("pu", penUp); 
+    Particle.function("pd", penDown); 
+    Particle.function("text", drawText);
+    Particle.function("angles", setAnglesStr);
 }
 
-void loop(){}
+void loop()                     {}
+int penUp(String ignore)        { servo_lift.write(12);   return 0; }
+int penDown(String ignore)      { servo_lift.write(120);  return 0; }
+int gotoStrXY(String command)   { return gotoStrXY_with_delta(command, 0.0f, 0.0f); }
 
-int gotoStrXY(String command) {
+int gotoStrXY_with_delta(const String command, const float dx, const float dy) {
     int index = command.indexOf(":");
     if(index<0) return -200;
     
-    float pen_x = atof(command.substring(0,index));
-    float pen_y = atof(command.substring(index+1));
+    float pen_x = dx + atof(command.substring(0,index));
+    float pen_y = dy + atof(command.substring(index+1));
     
-    return gotoXY(pen_x,pen_y);
+    return gotoXY(pen_x, pen_y);
 }
 
-int penUpStr(String ignore)   { penUp();   return 0; }
-int penDownStr(String ignore) { penDown(); return 0; }
-void penUp()   { servo_lift.write(12); }
-void penDown() { servo_lift.write(120);}
-float radian2degrees(float r) {	return r * 180.0f / PI; }
+int setAnglesStr(String command) {
+    int index = command.indexOf(":");
+    if(index<0) return -200;
+    
+    float left  = atof(command.substring(0,index));
+    float right = atof(command.substring(index+1));
+    
+    return setAngles(left, right);
+}
 
 // origin x is zero in the middle of the servos, positive to the right
 // origin y is zero at the line of two servos, positive below
@@ -57,9 +67,9 @@ int gotoXY(const float pen_x, const float pen_y) {
     // Calculate the point relative to each servo
     const float delta_left_x  = pen_x - left_servo_x;
 	const float delta_right_x = pen_x - right_servo_x;
-    const float pen_y_sq = pen_y * pen_y;
     
     // Distances servos to pen, squared
+    const float pen_y_sq = pen_y * pen_y;
 	const float pen_distance_left_sq  = delta_left_x  * delta_left_x  + pen_y_sq;
 	const float pen_distance_right_sq = delta_right_x * delta_right_x + pen_y_sq;
     
@@ -76,39 +86,27 @@ int gotoXY(const float pen_x, const float pen_y) {
 	const float bend_angle_right = acos( (cosine_rule_helper_sq + pen_distance_right_sq ) / (2*inner_arm*sqrt(pen_distance_right_sq)));
 
 	// Sum the two angles together (but they are "opposite") and convert radian to degrees, with 90 degrees offset
-	const float servo_angle_left  = 90.0f + radian2degrees( bend_angle_left  - pen_angle_left);
-	const float servo_angle_right = 90.0f + radian2degrees(-bend_angle_right - pen_angle_right);
-    
-    // Sanity check of angles
-    if(servo_angle_left <0) return -21; // Left angle to low
-    if(servo_angle_right<0) return -22; // Right angle to low
-    if(servo_angle_left >180) return -23; // Left angle to high
-    if(servo_angle_right>180) return -24; // Right angle to high
+	const float servo_angle_left  = 90.0f + ( bend_angle_left  - pen_angle_left)  * 180.0f / PI;
+	const float servo_angle_right = 90.0f + (-bend_angle_right - pen_angle_right) * 180.0f / PI;
     
     // Finally - move the servos
-    servo_left.write(servo_angle_left);
-    servo_right.write(servo_angle_right);
-    return 0;
+    return setAngles(servo_angle_left, servo_angle_right); 
 }
 
-const String font[] = {
-// 1    
-    "CHAR 1 1",
-    "PU",
-    "XY 0:0.5",
-    "PD",
-    "XY 0.5:0",
-    "XY 0.5:0.5",
-    "XY 0.5:1",
-    "XY 0.5:1.5",
-    "XY 0.5:2",
-    "PU",
-    "XY 0:2",
-    "PD",
-    "XY 0.5:2",
-    "XY 1:2",
-    "PU",
-};
+int setAngles(const float left_angle_in, const float right_angle_in) {
+    const float left_angle  = left_angle_in  + left_angle_offset;
+    const float right_angle = right_angle_in + right_angle_offset;
+    
+    // Sanity check of angles
+    if(left_angle <0) return -21; 
+    if(right_angle<0) return -22; 
+    if(left_angle >180) return -23; 
+    if(right_angle>180) return -24; 
+    
+    servo_left.write(left_angle);
+    servo_right.write(right_angle);
+    return 0;   
+}
 
 int drawText(String text) {
     float dx = -8.0f;
@@ -118,32 +116,29 @@ int drawText(String text) {
     return 0;
 }
 
-float drawCharacter(const char c, const float dx, const float dy) {
+float drawCharacter(const char character, const float dx, const float dy) {
     bool drawing = false;
-    float width = 0.0f;
+    float width  = 0.0f;
     
     for(int i=0;;i++) {
         String cmdLine = font[i];
         if(cmdLine.startsWith("CHAR ")) {
-            if(drawing) 
-                return width;
-            if(cmdLine.charAt(5)==c) {
+            if(drawing) break;
+            if(cmdLine.charAt(5)==character) {
                 drawing = true;
                 width = atof(cmdLine.substring(7));
             }
         }
-        else if(cmdLine.startsWith("PU")) {
-            if(drawing) penUp();
-        }
-        else if(cmdLine.startsWith("PD")) {
-            if(drawing) penDown();
-        }
         else if(cmdLine.startsWith("XY ")) {
-            if(drawing) gotoStrXY(cmdLine.substring(3));
+            if(drawing) {
+                const int result = gotoStrXY_with_delta(cmdLine.substring(3), dx, dy);
+                if(result!=0) Particle.publish("DEBUG","Outta reach");
+            }
         }
-        else {
-            return width; 
-        }
+        else if(cmdLine.startsWith("PU")) { if(drawing) penUp(NULL); }
+        else if(cmdLine.startsWith("PD")) { if(drawing) penDown(NULL); }
+        else if(cmdLine.startsWith("END")) break;
+        else break; // Unknown command
     }
 	return width;
 }
