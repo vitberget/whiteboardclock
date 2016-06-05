@@ -4,6 +4,16 @@
 const float PI = 3.14159265f;
 
 const char* font[] = {
+// :
+  "CHAR : 1.1",
+  "PU",
+  "XY 0.5:0.5",
+  "PD",
+  "XY 0.5:0.7",
+  "PU",
+  "XY 0.5:1.3",
+  "PD",
+  "XY 0.5:1.5",
 // 1
   "CHAR 1 1.1",
   "PU",
@@ -35,7 +45,6 @@ const char* font[] = {
   "XY 0:1",
   "XY 1:1.5",
   "XY 0:2",
-  "END",
 // 4
   "CHAR 4 1.1",
   "PU",
@@ -45,7 +54,7 @@ const char* font[] = {
   "XY 1:1",
   "PU",
   "XY 1:0",
-  "Xy 1:1",
+  "XY 1:1",
   "XY 1:2",
 // 5
   "CHAR 5 1.1",
@@ -106,16 +115,8 @@ const char* font[] = {
   "XY 0.5:2",
   "XY 0:1",
   "XY 0.5:0",
-// :
-  "CHAR : 1.1",
-  "PU",
-  "XY 0.5:0.5",
-  "PD",
-  "XY 0.5:0.7",
-  "PU",
-  "XY 0.5:1.3",
-  "PD",
-  "XY 0.5:1.5",
+
+
 
   NULL
 };
@@ -252,20 +253,47 @@ float drawCharacter(const char character, const float dx, const float dy) {
   bool drawing = false;
   float width  = 0.0f;
 
-  for(int i=0;i<30;i++) {
+  for(int i=0;i<3000;i++) {
     const char* cmdLine = font[i];
+    Serial.print("Parsing ");
+    Serial.println(cmdLine);
+
     if(strncmp("CHAR ",cmdLine,5) == 0) {
       if(drawing) { break; }
+      Serial.print("Checking ");
+      Serial.println(cmdLine[5]);
       if(cmdLine[5]==character) {
         drawing = true;
         width = atof(&cmdLine[7]);
       }
     }
-    else if(strncmp("XY ",cmdLine,3) == 0) { if(drawing) gotoStrXY_with_delta(String(&cmdLine[3]), dx, dy); }
-    else if(strncmp("PU",cmdLine,2) == 0)  { if(drawing) penUp(NULL); }
-    else if(strncmp("PD",cmdLine,2) == 0)  { if(drawing) penDown(NULL); }
-    else if(cmdLine==NULL || strncmp("END",cmdLine,3) == 0) { break; }
-    else { break; } // Unknown command
+    else if(strncmp("XY ",cmdLine,3) == 0) {
+      if(drawing) {
+        gotoStrXY_with_delta(String(&cmdLine[3]), dx, dy);
+        delay(1600);
+      }
+    }
+    else if(strncmp("PU",cmdLine,2) == 0) {
+      if(drawing) {
+        penUp(NULL);
+        delay(1600);
+      }
+    }
+    else if(strncmp("PD",cmdLine,2) == 0) {
+      if(drawing) {
+        penDown(NULL);
+        delay(1600);
+      } 
+    }
+    else if(cmdLine==NULL || strncmp("END",cmdLine,3) == 0) {
+      Serial.println("NULL or END");
+      break;
+    }
+    else {
+      Serial.print("Unknwon command ");
+      Serial.println(cmdLine);
+      break;
+    } // Unknown command
   }
   return width;
 }
