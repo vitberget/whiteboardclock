@@ -5,23 +5,118 @@ const float PI = 3.14159265f;
 
 const char* font[] = {
 // 1
-  "CHAR 1 1",
+  "CHAR 1 1.1",
   "PU",
   "XY 0:0.5",
   "PD",
   "XY 0.5:0",
-  "XY 0.5:0.5",
   "XY 0.5:1",
-  "XY 0.5:1.5",
   "XY 0.5:2",
   "PU",
   "XY 0:2",
   "PD",
-  "XY 0.5:2",
   "XY 1:2",
+// 2
+  "CHAR 2 1.1",
   "PU",
-
+  "XY 0:0.5",
+  "PD",
+  "XY 0.5:0",
+  "XY 1:0.5",
+  "XY 0.5:1.1",
+  "XY 0:2",
+  "XY 1:2",
+// 3
+  "CHAR 3 1.1",
+  "PU",
+  "XY 0:0",
+  "PD",
+  "XY 1:0.5",
+  "XY 0:1",
+  "XY 1:1.5",
+  "XY 0:2",
   "END",
+// 4
+  "CHAR 4 1.1",
+  "PU",
+  "XY 0:0",
+  "PD",
+  "XY 1:0",
+  "XY 1:1",
+  "PU",
+  "XY 1:0",
+  "Xy 1:1",
+  "XY 1:2",
+// 5
+  "CHAR 5 1.1",
+  "PU",
+  "XY 1:0",
+  "PD",
+  "XY 0:0",
+  "XY 0:1",
+  "XY 1:1",
+  "XY 1:2",
+  "XY 0:2",
+// 6
+  "CHAR 6 1.1",
+  "PU",
+  "XY 0:0",
+  "PD",
+  "XY 0:1",
+  "XY 0:2",
+  "XY 1:2",
+  "XY 1:1",
+  "XY 0:1",
+// 7
+  "CHAR 7 1.1",
+  "PU",
+  "XY 0:0",
+  "PD",
+  "XY 1:0",
+  "XY 0.5:1",
+  "XY 0.5:2",
+// 8
+  "CHAR 8 1.1",
+  "PU",
+  "XY 1:1",
+  "PD",
+  "XY 1:0",
+  "XY 0:0",
+  "XY 0:1",
+  "XY 1:1",
+  "XY 1:2",
+  "XY 0:2",
+  "XY 0:1",
+// 9
+  "CHAR 9 1.1",
+  "PU",
+  "XY 1:1",
+  "PD",
+  "XY 1:0",
+  "XY 0:0",
+  "XY 1:0",
+  "XY 1:1",
+  "XY 1:2",
+// 0
+  "CHAR 0 1.1",
+  "PU",
+  "XY 0.5:0",
+  "PD",
+  "XY 1:1",
+  "XY 0.5:2",
+  "XY 0:1",
+  "XY 0.5:0",
+// :
+  "CHAR : 1.1",
+  "PU",
+  "XY 0.5:0.5",
+  "PD",
+  "XY 0.5:0.7",
+  "PU",
+  "XY 0.5:1.3",
+  "PD",
+  "XY 0.5:1.5",
+
   NULL
 };
 
@@ -41,6 +136,7 @@ const float cosine_rule_helper_sq   = inner_arm_sq - outer_arm_sq;
 const float botharms_sq             = (inner_arm + outer_arm) * (inner_arm + outer_arm);
 
 void setup() {
+  Serial.begin(9600);
   servo_left.attach(  D0 );
   servo_right.attach( D1 );
   servo_lift.attach(  D2 );
@@ -54,11 +150,13 @@ void setup() {
   Particle.function("pd", penDown);
   Particle.function("text", drawText);
   Particle.function("angles", setAnglesStr);
+
+  Serial.println("Started");
 }
 
 void loop()                     {}
-int penUp(String ignore)        { servo_lift.write(12);   return 0; }
-int penDown(String ignore)      { servo_lift.write(120);  return 0; }
+int penUp(String ignore)        { Serial.println("pen up");   servo_lift.write(12);   return 0; }
+int penDown(String ignore)      { Serial.println("pen down"); servo_lift.write(120);  return 0; }
 int gotoStrXY(String command)   { return gotoStrXY_with_delta(command, 0.0f, 0.0f); }
 
 int gotoStrXY_with_delta(const String command, const float dx, const float dy) {
@@ -85,6 +183,11 @@ int setAnglesStr(String command) {
 // origin y is zero at the line of two servos, positive below
 // Desired point to move the pen to referred to 'the point'
 int gotoXY(const float pen_x, const float pen_y) {
+  Serial.print("gotoxy ");
+  Serial.print(pen_x);
+  Serial.print(" ");
+  Serial.println(pen_y);
+
   if(pen_y<5) return -1;
 
   // Calculate the point relative to each servo
@@ -132,14 +235,20 @@ int setAngles(const float left_angle_in, const float right_angle_in) {
 }
 
 int drawText(String text) {
+  Serial.print("Draw text ");
+  Serial.println(text);
+
   float dx = -8.0f;
   for(int i=0; i<text.length(); i++) {
-      dx += drawCharacter(text.charAt(i), dx, 7.0f);
+      dx += drawCharacter(text.charAt(i), dx, 17.0f);
   }
   return 0;
 }
 
 float drawCharacter(const char character, const float dx, const float dy) {
+  Serial.print("Draw char ");
+  Serial.println(character);
+
   bool drawing = false;
   float width  = 0.0f;
 
