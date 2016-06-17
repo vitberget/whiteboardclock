@@ -5,7 +5,7 @@ const float PI = 3.14159265f;
 
 const char* font[] = {
 // :
-  "CHAR : 1.1",
+  "CHAR : 1.5",
   "PU",
   "XY 0.5:0.5",
   "PD",
@@ -15,7 +15,7 @@ const char* font[] = {
   "PD",
   "XY 0.5:1.5",
 // 1
-  "CHAR 1 1.1",
+  "CHAR 1 1.5",
   "PU",
   "XY 0:0.5",
   "PD",
@@ -27,7 +27,7 @@ const char* font[] = {
   "PD",
   "XY 1:2",
 // 2
-  "CHAR 2 1.1",
+  "CHAR 2 1.5",
   "PU",
   "XY 0:0.5",
   "PD",
@@ -37,7 +37,7 @@ const char* font[] = {
   "XY 0:2",
   "XY 1:2",
 // 3
-  "CHAR 3 1.1",
+  "CHAR 3 1.5",
   "PU",
   "XY 0:0",
   "PD",
@@ -46,18 +46,19 @@ const char* font[] = {
   "XY 1:1.5",
   "XY 0:2",
 // 4
-  "CHAR 4 1.1",
+  "CHAR 4 1.5",
   "PU",
   "XY 0:0",
   "PD",
-  "XY 1:0",
+  "XY 0:1",
   "XY 1:1",
   "PU",
   "XY 1:0",
+  "PD",
   "XY 1:1",
   "XY 1:2",
 // 5
-  "CHAR 5 1.1",
+  "CHAR 5 1.5",
   "PU",
   "XY 1:0",
   "PD",
@@ -67,7 +68,7 @@ const char* font[] = {
   "XY 1:2",
   "XY 0:2",
 // 6
-  "CHAR 6 1.1",
+  "CHAR 6 1.5",
   "PU",
   "XY 0:0",
   "PD",
@@ -77,7 +78,7 @@ const char* font[] = {
   "XY 1:1",
   "XY 0:1",
 // 7
-  "CHAR 7 1.1",
+  "CHAR 7 1.5",
   "PU",
   "XY 0:0",
   "PD",
@@ -85,7 +86,7 @@ const char* font[] = {
   "XY 0.5:1",
   "XY 0.5:2",
 // 8
-  "CHAR 8 1.1",
+  "CHAR 8 1.5",
   "PU",
   "XY 1:1",
   "PD",
@@ -97,17 +98,17 @@ const char* font[] = {
   "XY 0:2",
   "XY 0:1",
 // 9
-  "CHAR 9 1.1",
+  "CHAR 9 1.5",
   "PU",
   "XY 1:1",
   "PD",
   "XY 1:0",
   "XY 0:0",
-  "XY 1:0",
+  "XY 0:1",
   "XY 1:1",
   "XY 1:2",
 // 0
-  "CHAR 0 1.1",
+  "CHAR 0 1.5",
   "PU",
   "XY 0.5:0",
   "PD",
@@ -125,18 +126,20 @@ Servo servo_left;
 Servo servo_right;
 Servo servo_lift;
 
-const float left_servo_x            = -4.0f;
-const float right_servo_x           = 4.0f;
-const float left_angle_offset       = 0.0f;
-const float right_angle_offset      = 0.0f;
-const float inner_arm               = 13.0f;
-const float outer_arm               = 22.0f;
+const float left_servo_x            = -1.0f;
+const float right_servo_x           = 1.0f;
+
+const float inner_arm               = 3.25f;//6.5f;
+const float outer_arm               = 3.25f;//6.5f;
 const float inner_arm_sq            = inner_arm * inner_arm;
 const float outer_arm_sq            = outer_arm * outer_arm;
 const float cosine_rule_helper_sq   = inner_arm_sq - outer_arm_sq;
 const float botharms_sq             = (inner_arm + outer_arm) * (inner_arm + outer_arm);
 
+Timer timer(5*60000, timerEvent);
+
 void setup() {
+  //timer.stop();
   Serial.begin(9600);
   servo_left.attach(  D0 );
   servo_right.attach( D1 );
@@ -151,8 +154,31 @@ void setup() {
   Particle.function("pd", penDown);
   Particle.function("text", drawText);
   Particle.function("angles", setAnglesStr);
+  Particle.function("start", timerStart);
+  Particle.function("stop", timerStop);
+  Particle.function("wipe", wipeBoard);
+
 
   Serial.println("Started");
+}
+
+int timerStart(String ignore) { timer.start(); }
+int timerStop(String ignore) { timer.stop(); }
+void timerEvent() { wipeBoard(NULL); drawText( Time.format("%H:%M") ); }
+
+int wipeBoard(String ignore) {
+  penUp(NULL); delay(1600);
+  gotoXY(-2,2); delay(1600);
+  penDown(NULL); delay(1600);
+
+  gotoXY(2,2);delay(2000);
+  gotoXY(2,3);delay(2000);
+  gotoXY(-2,3);delay(2000);
+  gotoXY(-2,4);delay(2000);
+  gotoXY(2,4);delay(2000);
+
+  gotoXY(-2,2); delay(1600);
+  penUp(NULL); delay(1600);
 }
 
 void loop()                     {}
@@ -189,7 +215,7 @@ int gotoXY(const float pen_x, const float pen_y) {
   Serial.print(" ");
   Serial.println(pen_y);
 
-  if(pen_y<5) return -1;
+  if(pen_y<1) return -1;
 
   // Calculate the point relative to each servo
   const float delta_left_x  = pen_x - left_servo_x;
@@ -221,8 +247,8 @@ int gotoXY(const float pen_x, const float pen_y) {
 }
 
 int setAngles(const float left_angle_in, const float right_angle_in) {
-  const float left_angle  = left_angle_in  + left_angle_offset;
-  const float right_angle = right_angle_in + right_angle_offset;
+  const float left_angle  = 6 + left_angle_in * 172.0f / 180.0f;
+  const float right_angle = 15 + right_angle_in * 162.0f / 180.0f;
 
   // Sanity check of angles
   if(left_angle <0)  return -21;
@@ -239,9 +265,9 @@ int drawText(String text) {
   Serial.print("Draw text ");
   Serial.println(text);
 
-  float dx = -8.0f;
+  float dx = -3.0f;
   for(int i=0; i<text.length(); i++) {
-      dx += drawCharacter(text.charAt(i), dx, 17.0f);
+      dx += drawCharacter(text.charAt(i), dx, 3.0f);
   }
   return 0;
 }
@@ -283,7 +309,7 @@ float drawCharacter(const char character, const float dx, const float dy) {
       if(drawing) {
         penDown(NULL);
         delay(1600);
-      } 
+      }
     }
     else if(cmdLine==NULL || strncmp("END",cmdLine,3) == 0) {
       Serial.println("NULL or END");
