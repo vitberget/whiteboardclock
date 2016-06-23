@@ -125,12 +125,17 @@ const char* font[] = {
 Servo servo_left;
 Servo servo_right;
 Servo servo_lift;
+/*
+ia 95
+oa 105
+ss 90
+*/
+const float f = 0.03095238f *1.8f;
+const float left_servo_x            = f *-45;
+const float right_servo_x           = f *45;
 
-const float left_servo_x            = -1.0f;
-const float right_servo_x           = 1.0f;
-
-const float inner_arm               = 3.25f;//6.5f;
-const float outer_arm               = 3.25f;//6.5f;
+const float inner_arm               = f*95;
+const float outer_arm               = f*105;
 const float inner_arm_sq            = inner_arm * inner_arm;
 const float outer_arm_sq            = outer_arm * outer_arm;
 const float cosine_rule_helper_sq   = inner_arm_sq - outer_arm_sq;
@@ -158,7 +163,6 @@ void setup() {
   Particle.function("stop", timerStop);
   Particle.function("wipe", wipeBoard);
 
-
   Serial.println("Started");
 }
 
@@ -167,23 +171,25 @@ int timerStop(String ignore) { timer.stop(); }
 void timerEvent() { wipeBoard(NULL); drawText( Time.format("%H:%M") ); }
 
 int wipeBoard(String ignore) {
-  penUp(NULL); delay(1600);
-  gotoXY(-2,2); delay(1600);
+  penHighUp(NULL); delay(1600);
+  gotoXY(-3,4); delay(1600);
   penDown(NULL); delay(1600);
 
-  gotoXY(2,2);delay(2000);
-  gotoXY(2,3);delay(2000);
-  gotoXY(-2,3);delay(2000);
-  gotoXY(-2,4);delay(2000);
-  gotoXY(2,4);delay(2000);
+  gotoXY(3,4);delay(2000);
+  gotoXY(4,4);delay(2000);
+  gotoXY(-4,4);delay(2000);
+  gotoXY(-4,5);delay(2000);
+  gotoXY(4,5);delay(2000);
 
-  gotoXY(-2,2); delay(1600);
-  penUp(NULL); delay(1600);
+  gotoXY(-3,4); delay(1600);
+  penHighUp(NULL); delay(1600);
 }
 
 void loop()                     {}
-int penUp(String ignore)        { Serial.println("pen up");   servo_lift.write(12);   return 0; }
-int penDown(String ignore)      { Serial.println("pen down"); servo_lift.write(120);  return 0; }
+
+int penUp(String ignore)        { Serial.println("pen up");   servo_lift.write(60);   return 0; }
+int penHighUp(String ignore)    { Serial.println("pen high up");   servo_lift.write(90);   return 0; }
+int penDown(String ignore)      { Serial.println("pen down"); servo_lift.write(20);  return 0; }
 int gotoStrXY(String command)   { return gotoStrXY_with_delta(command, 0.0f, 0.0f); }
 
 int gotoStrXY_with_delta(const String command, const float dx, const float dy) {
@@ -265,10 +271,14 @@ int drawText(String text) {
   Serial.print("Draw text ");
   Serial.println(text);
 
-  float dx = -3.0f;
+  float dx = -2.0f;
   for(int i=0; i<text.length(); i++) {
-      dx += drawCharacter(text.charAt(i), dx, 3.0f);
+      dx += drawCharacter(text.charAt(i), dx, 2.2f);
   }
+
+  penHighUp(NULL); delay(1600);
+  gotoXY(-3,4); delay(1600);
+
   return 0;
 }
 
